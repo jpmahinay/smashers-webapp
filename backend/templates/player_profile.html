@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="profile-page">
+    <div class="card profile-header">
+        <h2>{{ player.name }}</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><h3>Wins</h3><p>{{ player.wins }}</p></div>
+            <div class="stat-card"><h3>Losses</h3><p>{{ player.losses }}</p></div>
+            <div class="stat-card"><h3>Gender</h3><p>{{ player.gender }}</p></div>
+        </div>
+    </div>
+
+    <h3>Match History</h3>
+    {% if matches %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Partner</th>
+                    <th>Opponents</th>
+                    <th>Score</th>
+                    <th>Remark</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                {% set win_condition = (player.username in [match.male_player1, match.female_player1] and match.winner_team == 'Team 1') or (player.username in [match.male_player2, match.female_player2] and match.winner_team == 'Team 2') %}
+                <tr class="{% if win_condition %}match-win{% else %}match-loss{% endif %}">
+                    <td data-label="Partner">{{ match.partner_name }}</td>
+                    <td data-label="Opponents">{{ match.opponents_names }}</td>
+                    <td data-label="Score">{{ match.score }}</td>
+                    <td data-label="Remark">{{ match.remark }}</td>
+                    <td data-label="Result">
+                        {% if win_condition %}<span class="result-win-text">Win</span>{% else %}<span class="result-loss-text">Loss</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="card">{{ player.name }} has no completed matches on record.</p>
+    {% endif %}
+</div>
+{% endblock %}

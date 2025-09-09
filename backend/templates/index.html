@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="hero card" style="text-align: center;">
+    <h1>Welcome to Smashers</h1>
+    <p>The ultimate hub for our badminton community. Track matches, view player stats, and climb the ranks.</p>
+    <div class="hero-buttons" style="display: flex; gap: 1rem; justify-content: center;">
+        <a href="{{ url_for('rankings') }}" class="btn btn-primary">View Rankings</a>
+        <a href="{{ url_for('register') }}" class="btn btn-secondary">Join Now</a>
+    </div>
+</div>
+{% endblock %}

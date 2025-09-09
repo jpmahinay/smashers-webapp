@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="form-container">
+    <h2>Enter Match Results</h2>
+    {% if matches %}
+    <form method="POST">
+        <div class="form-group">
+            <label for="match_index">Select Match</label>
+            <select name="match_index" required>
+                {% for match in matches %}
+                <option value="{{ loop.index0 }}">{{ match.player1 }} vs {{ match.player2 }} on {{ match.date }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="winner">Select Winner</label>
+            <select name="winner" required>
+                <!-- This will be populated by JS -->
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Result</button>
+    </form>
+    {% else %}
+    <p>No scheduled matches available to enter results for.</p>
+    {% endif %}
+</div>
+<!-- Pass match data to JavaScript -->
+<script>
+    const matches = {{ matches | tojson }};
+</script>
+{% endblock %}

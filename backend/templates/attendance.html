@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="form-container">
+    <h2>Player Attendance for Today</h2>
+    <p>Uncheck any players who are not present. They will be excluded from today's game creation.</p>
+    <form method="POST">
+        <div class="attendance-grid">
+            <div class="attendance-col">
+                <h3>Male Players</h3>
+                {% for player in male_players %}
+                <div class="form-group-checkbox">
+                    <input type="checkbox" name="present_players" value="{{ player.username }}" id="player-{{ player.username }}"
+                           {% if player.username in present_today %}checked{% endif %}>
+                    <label for="player-{{ player.username }}">{{ player.name }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="attendance-col">
+                <h3>Female Players</h3>
+                {% for player in female_players %}
+                <div class="form-group-checkbox">
+                    <input type="checkbox" name="present_players" value="{{ player.username }}" id="player-{{ player.username }}"
+                           {% if player.username in present_today %}checked{% endif %}>
+                    <label for="player-{{ player.username }}">{{ player.name }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Attendance</button>
+    </form>
+</div>
+{% endblock %}

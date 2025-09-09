@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="admin-page-container">
+    <div class="admin-header">
+        <h2>Admin Control Panel</h2>
+        <div class="admin-actions">
+            <a href="{{ url_for('attendance') }}" class="btn btn-secondary">Set Attendance</a>
+            <a href="{{ url_for('create_match') }}" class="btn btn-primary">New Mixed Match</a>
+            <a href="{{ url_for('create_custom_match') }}" class="btn btn-tertiary">New Custom Match</a>
+        </div>
+    </div>
+
+    <div class="admin-matches-section">
+        <h3>{{ title }}</h3>
+        {% if matches %}
+        <div class="manage-matches-list">
+            {% for match in matches %}
+            <div class="card match-card {% if match.status == 'ongoing' %}ongoing-match{% endif %}">
+                <div class="match-info">
+                     <h4>
+  <span class="team-label">Team 1</span> 
+  <span class="player-highlight">{{ match.t1_p1_name }}</span> 
+  <span class="ampersand-highlight">|</span>
+  <span class="player-highlight">{{ match.t1_p2_name }}</span>
+  <small class="vs-text-card">vs</small>
+  <span class="team-label">Team 2</span> 
+  <span class="player-highlight">{{ match.t2_p1_name }}</span> 
+  <span class="ampersand-highlight">|</span>
+  <span class="player-highlight">{{ match.t2_p2_name }}</span>
+</h4>
+                </div>
+
+                <div class="match-details-actions-wrapper">
+                    <div class="match-meta">
+                        <span><i class="fa-solid fa-calendar-days"></i> {{ match.date }}</span>
+                        <span><i class="fa-solid fa-trophy"></i> {{ match.game_type }}</span>
+                        <span><i class="fa-solid fa-circle-info"></i> <span class="status-{{ match.status }}">{{ match.status }}</span></span>
+                    </div>
+
+                    <div class="match-actions">
+                        {% if match.status == 'scheduled' %}
+                            <a href="{{ url_for('cancel_match', match_index=match.index) }}" class="btn btn-cancel btn-small">Cancel</a>
+                            <a href="{{ url_for('start_match', match_index=match.index) }}" class="btn btn-start btn-small">Start</a>
+                        {% elif match.status == 'ongoing' %}
+                            <form method="POST" action="{{ url_for('finish_match') }}">
+                                <input type="hidden" name="match_index" value="{{ match.index }}">
+                                <div class="ongoing-form">
+                                    <select name="winner_team" required>
+                                        <option value="Team 1">Team 1 Wins</option>
+                                        <option value="Team 2">Team 2 Wins</option>
+                                    </select>
+                                    <input type="text" name="score" placeholder="Score" required>
+                                    <button type="submit" class="btn btn-finish btn-small">Save</button>
+                                </div>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="card no-matches-info">No matches to manage. View past games in the Match History.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="history-page">
+    <h2>Match History</h2>
+    <div class="card history-filter-form">
+        <form method="POST" action="{{ url_for('history') }}">
+            <div class="form-group">
+                <label for="start_date">Start Date:</label>
+                <input type="date" name="start_date" value="{{ start_date or '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="end_date">End Date:</label>
+                <input type="date" name="end_date" value="{{ end_date or '' }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Filter History</button>
+        </form>
+    </div>
+
+    {% if grouped_matches %}
+        {% for date, matches_on_date in grouped_matches.items() %}
+            <div class="history-day-group">
+                <h3 class="history-date-header">{{ date }}</h3>
+                <div class="table-container card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in matches_on_date %}
+                            <tr>
+                                <td data-label="Game" class="game-type-cell">{{ match.game_type }}</td>
+                                <td data-label="Result">
+                                    <span class="winner-team-name">{{ match.winner_p1_name }} & {{ match.winner_p2_name }}</span>
+                                    <span class="win-tag">(WIN - {{ match.winner_score }})</span>
+                                    <span class="vs-text">vs</span>
+                                    <span class="loser-team-name">{{ match.loser_p1_name }} & {{ match.loser_p2_name }}</span>
+                                    <span class="lose-tag">(LOSE - {{ match.loser_score }})</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="card no-results-card">
+            <p>No completed matches found for the selected criteria.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="rankings-page">
+    <h2>Player Rankings</h2>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player Name</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Win/Loss Ratio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for player in players %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><a href="{{ url_for('player_profile', username=player.username) }}">{{ player.name }}</a></td>
+                    <td>{{ player.wins }}</td>
+                    <td>{{ player.losses }}</td>
+                    <td>{{ "%.2f"|format(player.win_loss_ratio) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="ongoing-page">
+    <h2>Today's Ongoing Matches</h2>
+    {% if matches %}
+    <div class="manage-matches-list">
+        {% for match in matches %}
+        <div class="card match-card ongoing-match">
+            <div class="match-info">
+                 <h4>
+                    <span class="team-label">(T1)</span> <span class="player-highlight">{{ match.t1_p1_name }} & {{ match.t1_p2_name }}</span>
+                    <small class="vs-text-card">vs</small> 
+                    <span class="team-label">(T2)</span> <span class="player-highlight">{{ match.t2_p1_name }} & {{ match.t2_p2_name }}</span>
+                </h4>
+            </div>
+             <div class="match-details-actions-wrapper">
+                <div class="match-meta">
+                    <span><i class="fa-solid fa-calendar-days"></i> {{ match.date }}</span>
+                    <span><i class="fa-solid fa-trophy"></i> {{ match.game_type }}</span>
+                    <span><i class="fa-solid fa-circle-info"></i> <span class="status-{{ match.status }}">{{ match.status }}</span></span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="card">There are no matches currently in progress.</p>
+    {% endif %}
+</div>
+{% endblock %}

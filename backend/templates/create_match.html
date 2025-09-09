@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="form-container">
+    <h2>Create Mixed Doubles - Game {{ game_number }}</h2>
+    <form method="POST">
+        <div class="team-section">
+            <h3>Team 1</h3>
+            <div class="form-group">
+                <label for="male_player1">Select Male Player</label>
+                <select name="male_player1" required>
+                    <option value="">-- Select --</option>
+                    {% for player in male_players %}
+                    <option value="{{ player.username }}">{{ player.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="female_player1">Select Female Partner</label>
+                <select name="female_player1">
+                    <option value="">-- Select Manually --</option>
+                    {% for player in female_players %}
+                    <option value="{{ player.username }}">{{ player.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group-checkbox">
+                <input type="checkbox" name="randomize1">
+                <label>Assign Random Available Female Partner</label>
+            </div>
+        </div>
+
+        <div class="team-section">
+            <h3>Team 2</h3>
+            <div class="form-group">
+                <label for="male_player2">Select Male Player</label>
+                <select name="male_player2" required>
+                    <option value="">-- Select --</option>
+                    {% for player in male_players %}
+                    <option value="{{ player.username }}">{{ player.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="female_player2">Select Female Partner</label>
+                <select name="female_player2">
+                    <option value="">-- Select Manually --</option>
+                    {% for player in female_players %}
+                    <option value="{{ player.username }}">{{ player.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group-checkbox">
+                <input type="checkbox" name="randomize2">
+                <label>Assign Random Available Female Partner</label>
+            </div>
+        </div>
+        
+        <hr>
+        <div class="form-group">
+           <label for="date">Date</label>
+           <input type="date" name="date" value="{{ today_str }}" required>
+        </div>
+        <div class="form-group">
+           <label for="game_type">Game Type</label>
+           <input type="text" name="game_type" value="Game {{ game_number }}" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Schedule Match</button>
+    </form>
+</div>
+{% endblock %}

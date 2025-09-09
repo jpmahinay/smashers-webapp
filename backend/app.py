@@ -25,7 +25,7 @@ MATCHES_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.matches"
 ATTENDANCE_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.attendance"
 
 app = Flask(__name__, template_folder='templates', static_folder='../static')
-app.secret_key = 'a_very_secret_and_secure_key_for_dev_v15_final'
+app.secret_key = 'a_very_secret_and_secure_key_for_dev_v16_final'
 
 # --- Helper Functions (CSV logic is kept for the simple users file) ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -39,28 +39,45 @@ def read_csv(file_path):
 def write_csv(df, file_path):
     df.to_csv(file_path, index=False)
 
+def generate_remark(score):
+    if not score or not isinstance(score, str): return ""
+    try:
+        games = [int(g) for g in re.findall(r'\d+', score)];
+        if len(games) < 2 or len(games) % 2 != 0: return ""
+        team1_total = sum(games[::2]); team2_total = sum(games[1::2]);
+        difference = abs(team1_total - team2_total)
+        if difference <= 2: return "Nice Close Game!"
+        elif difference <= 5: return "Well Fought Match!"
+        else: return "Decisive Victory!"
+    except (ValueError, TypeError): return ""
+
 # --- BigQuery Data Fetching Functions ---
 def get_all_players():
     try:
         query = f"SELECT * FROM `{PLAYERS_TABLE_ID}`"
         return client.query(query).to_dataframe()
-    except NotFound:
+    except (NotFound, Exception):
         return pd.DataFrame(columns=['username', 'name', 'age', 'gender', 'wins', 'losses'])
 
 def get_all_matches():
     try:
         query = f"SELECT * FROM `{MATCHES_TABLE_ID}`"
         return client.query(query).to_dataframe()
-    except NotFound:
+    except (NotFound, Exception):
         return pd.DataFrame(columns=['male_player1', 'female_player1', 'male_player2', 'female_player2', 'date', 'game_type', 'status', 'winner_team', 'score', 'remark'])
 
 def get_all_attendance():
     try:
         query = f"SELECT * FROM `{ATTENDANCE_TABLE_ID}`"
         return client.query(query).to_dataframe()
-    except NotFound:
+    except (NotFound, Exception):
         return pd.DataFrame(columns=['date', 'present_players'])
 
+
+# --- Main and Authentication Routes ---
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -84,11 +101,6 @@ def register():
         flash('Registration successful! Please log in.', 'success'); return redirect(url_for('login'))
     return render_template('register.html')
 
-# ... [The rest of the routes are converted below] ...
-# All routes are here in their final, complete form.
-@app.route('/')
-def index(): return render_template('index.html')
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -105,6 +117,7 @@ def login():
 def logout():
     session.clear(); flash('You have been logged out.', 'success'); return redirect(url_for('login'))
 
+# --- Player and Public Routes ---
 @app.route('/dashboard')
 def dashboard():
     if 'username' not in session or session.get('role') != 'player': return redirect(url_for('login'))
@@ -203,6 +216,7 @@ def history():
         grouped_matches[formatted_date].append(match_details)
     return render_template('history.html', grouped_matches=grouped_matches, start_date=start_date, end_date=end_date)
 
+# --- Admin Routes ---
 @app.route('/admin')
 def admin_dashboard():
     if session.get('role') != 'admin': return redirect(url_for('login'))
@@ -228,19 +242,13 @@ def attendance():
     if request.method == 'POST':
         present_players = request.form.getlist('present_players')
         present_players_str = ','.join(present_players)
-        
-        # BigQuery doesn't have a simple update, so we delete today's record and insert a new one
         delete_job = client.query(f"DELETE FROM `{ATTENDANCE_TABLE_ID}` WHERE date = '{today_str}'")
-        delete_job.result() # Wait for the job to complete
-        
+        delete_job.result()
         new_record = [{"date": today_str, "present_players": present_players_str}]
         errors = client.insert_rows_json(ATTENDANCE_TABLE_ID, new_record)
-        if errors:
-            flash(f"Error saving attendance: {errors}", "error")
-        else:
-            flash('Attendance for today has been saved!', 'success')
+        if errors: flash(f"Error saving attendance: {errors}", "error")
+        else: flash('Attendance for today has been saved!', 'success')
         return redirect(url_for('admin_dashboard'))
-        
     male_players, female_players = players_df[players_df['gender'] == 'Male'].to_dict('records'), players_df[players_df['gender'] == 'Female'].to_dict('records')
     today_record = attendance_df[attendance_df['date'] == today_str]
     present_today = today_record.iloc[0]['present_players'].split(',') if not today_record.empty and pd.notna(today_record.iloc[0]['present_players']) else []
@@ -263,14 +271,14 @@ def create_match():
         manually_picked = {p for p in [male_player1, female_player1, male_player2, female_player2] if p}
         females_for_random_pool = [p['username'] for p in female_players if p['username'] not in manually_picked]
         if 'randomize1' in request.form:
-            if not females_for_random_pool: flash('Not enough unique female players available for random assignment.', 'error'); return redirect(url_for('create_match'))
+            if not females_for_random_pool: flash('Not enough unique female players for random assignment.', 'error'); return redirect(url_for('create_match'))
             female_player1 = random.choice(females_for_random_pool); females_for_random_pool.remove(female_player1)
         if 'randomize2' in request.form:
-            if not females_for_random_pool: flash('Not enough unique female players available for random assignment.', 'error'); return redirect(url_for('create_match'))
+            if not females_for_random_pool: flash('Not enough unique female players for random assignment.', 'error'); return redirect(url_for('create_match'))
             female_player2 = random.choice(females_for_random_pool)
         all_players = [male_player1, female_player1, male_player2, female_player2]
         if None in all_players or "" in all_players: flash('All four player slots must be filled.', 'error'); return redirect(url_for('create_match'))
-        if len(set(all_players)) < 4: flash('All four players in a match must be unique. A player may have been auto-selected.', 'error'); return redirect(url_for('create_match'))
+        if len(set(all_players)) < 4: flash('All four players must be unique. A player may have been auto-selected.', 'error'); return redirect(url_for('create_match'))
         new_match_row = [{"male_player1": male_player1, "female_player1": female_player1, "male_player2": male_player2, "female_player2": female_player2, "date": date_val, "game_type": game_type, "status": "scheduled", "winner_team": None, "score": None, "remark": None}]
         errors = client.insert_rows_json(MATCHES_TABLE_ID, new_match_row)
         if errors: flash(f'Error saving match: {errors}', 'error')
@@ -278,8 +286,95 @@ def create_match():
         return redirect(url_for('admin_dashboard'))
     return render_template('create_match.html', male_players=male_players, female_players=female_players, game_number=game_number, today_str=today_str)
 
-# ... [The remaining admin routes follow the same pattern of conversion] ...
+@app.route('/admin/create_custom_match', methods=['GET', 'POST'])
+def create_custom_match():
+    if session.get('role') != 'admin': return redirect(url_for('login'))
+    players_df, matches_df, attendance_df = get_all_players(), get_all_matches(), get_all_attendance()
+    today_str = date.today().strftime('%Y-%m-%d')
+    active_matches_df = matches_df[matches_df['status'].isin(['scheduled', 'ongoing'])]
+    unavailable_players = list(set(pd.concat([active_matches_df['male_player1'], active_matches_df['female_player1'], active_matches_df['male_player2'], active_matches_df['female_player2']]).tolist())) if not active_matches_df.empty else []
+    today_attendance = attendance_df[attendance_df['date'] == today_str]
+    present_players_usernames = today_attendance.iloc[0]['present_players'].split(',') if not today_attendance.empty and pd.notna(today_attendance.iloc[0]['present_players']) else players_df['username'].tolist()
+    available_usernames = [p for p in present_players_usernames if p not in unavailable_players]
+    available_players = players_df[players_df['username'].isin(available_usernames)][['username', 'name']].to_dict('records')
+    if request.method == 'POST':
+        t1_p1, t1_p2, t2_p1, t2_p2, date_val, game_type = (request.form.get(k) for k in ['team1_player1', 'team1_player2', 'team2_player1', 'team2_player2', 'date', 'game_type'])
+        all_players = [t1_p1, t1_p2, t2_p1, t2_p2]
+        if None in all_players or "" in all_players: flash('All four player slots must be filled.', 'error'); return redirect(url_for('create_custom_match'))
+        if len(set(all_players)) < 4: flash('All four players in a match must be unique.', 'error'); return redirect(url_for('create_custom_match'))
+        new_match_row = [{"male_player1": t1_p1, "female_player1": t1_p2, "male_player2": t2_p1, "female_player2": t2_p2, "date": date_val, "game_type": game_type, "status": "scheduled", "winner_team": None, "score": None, "remark": None}]
+        errors = client.insert_rows_json(MATCHES_TABLE_ID, new_match_row)
+        if errors: flash(f'Error saving match: {errors}', 'error')
+        else: flash('Custom Match created successfully!', 'success')
+        return redirect(url_for('admin_dashboard'))
+    return render_template('create_custom_match.html', available_players=available_players, today_str=today_str)
 
+@app.route('/admin/start_match/<int:match_index>')
+def start_match(match_index):
+    if session.get('role') != 'admin': return redirect(url_for('login'))
+    matches_df = get_all_matches()
+    if match_index < len(matches_df):
+        match_to_update = matches_df.iloc[match_index]
+        query = f"""
+            UPDATE `{MATCHES_TABLE_ID}`
+            SET status = 'ongoing'
+            WHERE date = '{match_to_update['date']}' AND game_type = '{match_to_update['game_type']}'
+            AND male_player1 = '{match_to_update['male_player1']}' 
+        """
+        client.query(query).result()
+        flash('Match started!', 'success')
+    else: flash('Invalid match index.', 'error')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/cancel_match/<int:match_index>')
+def cancel_match(match_index):
+    if session.get('role') != 'admin': return redirect(url_for('login'))
+    matches_df = get_all_matches()
+    if match_index < len(matches_df) and matches_df.iloc[match_index]['status'] == 'scheduled':
+        match_to_delete = matches_df.iloc[match_index]
+        query = f"""
+            DELETE FROM `{MATCHES_TABLE_ID}`
+            WHERE date = '{match_to_delete['date']}' AND game_type = '{match_to_delete['game_type']}'
+            AND male_player1 = '{match_to_delete['male_player1']}'
+        """
+        client.query(query).result()
+        flash('Scheduled match has been successfully canceled.', 'success')
+    else:
+        flash('Could not cancel match. It might already be ongoing or completed.', 'error')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/finish_match', methods=['POST'])
+def finish_match():
+    if session.get('role') != 'admin': return redirect(url_for('login'))
+    matches_df, players_df = get_all_matches(), get_all_players()
+    match_index, winner_team, score = int(request.form['match_index']), request.form['winner_team'], request.form['score']
+    remark = generate_remark(score)
+    if match_index < len(matches_df):
+        match_to_update = matches_df.iloc[match_index]
+        update_query = f"""
+            UPDATE `{MATCHES_TABLE_ID}`
+            SET status = 'completed', winner_team = '{winner_team}', score = '{score}', remark = '{remark}'
+            WHERE date = '{match_to_update['date']}' AND game_type = '{match_to_update['game_type']}'
+            AND male_player1 = '{match_to_update['male_player1']}'
+        """
+        client.query(update_query).result()
+        
+        winners, losers = ([match_to_update['male_player1'], match_to_update['female_player1']], [match_to_update['male_player2'], match_to_update['female_player2']]) if winner_team == 'Team 1' else ([match_to_update['male_player2'], match_to_update['female_player2']], [match_to_update['male_player1'], match_to_update['female_player1']])
+        
+        for player_list, result_col in [(winners, 'wins'), (losers, 'losses')]:
+            for username in player_list:
+                update_player_query = f"""
+                    UPDATE `{PLAYERS_TABLE_ID}`
+                    SET {result_col} = {result_col} + 1
+                    WHERE username = '{username}'
+                """
+                client.query(update_player_query).result()
+
+        flash('Match finished and results recorded.', 'success')
+    else: flash('Failed to record results. Invalid match index.', 'error')
+    return redirect(url_for('admin_dashboard'))
+
+# --- Main Execution Block ---
 if __name__ == '__main__':
     os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(USERS_FILE):

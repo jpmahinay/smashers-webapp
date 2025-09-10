@@ -1,8 +1,8 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="form-container card">
+<div class="form-container">
     <h2>Player Attendance for Today</h2>
-    <p style="text-align: center; color: var(--text-medium); margin-top: -1rem; margin-bottom: 2rem;">Uncheck any players who are not present.</p>
+    <p>Uncheck any players who are not present. They will be excluded from today's game creation.</p>
     <form method="POST">
         <div class="attendance-grid">
             <div class="attendance-col">
@@ -26,7 +26,7 @@
                 {% endfor %}
             </div>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Save Attendance</button>
+        <button type="submit" class="btn btn-primary">Save Attendance</button>
     </form>
 </div>
 {% endblock %}

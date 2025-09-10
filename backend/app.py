@@ -25,7 +25,7 @@ MATCHES_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.matches"
 ATTENDANCE_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.attendance"
 
 app = Flask(__name__, template_folder='templates', static_folder='../static')
-app.secret_key = 'a_very_secret_and_secure_key_for_dev_v17_final'
+app.secret_key = 'a_very_secret_and_secure_key_for_dev_v18_final'
 
 # --- Helper Functions ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -230,24 +230,30 @@ def attendance():
     if request.method == 'POST':
         present_players = request.form.getlist('present_players')
         present_players_str = ','.join(present_players)
-        
-        merge_query = f"""
-            MERGE `{ATTENDANCE_TABLE_ID}` T
-            USING (SELECT '{today_str}' AS date, '{present_players_str}' AS present_players) S
-            ON T.date = S.date
-            WHEN MATCHED THEN
-              UPDATE SET T.present_players = S.present_players
-            WHEN NOT MATCHED THEN
-              INSERT (date, present_players) VALUES (date, present_players)
-        """
         try:
-            query_job = client.query(merge_query)
-            query_job.result()
+            check_query = f"SELECT date FROM `{ATTENDANCE_TABLE_ID}` WHERE date = '{today_str}'"
+            query_job = client.query(check_query)
+            results = query_job.result()
+            if results.total_rows > 0:
+                update_query = f"""
+                    UPDATE `{ATTENDANCE_TABLE_ID}`
+                    SET present_players = '{present_players_str}'
+                    WHERE date = '{today_str}'
+                """
+                update_job = client.query(update_query)
+                update_job.result()
+            else:
+                new_record = [{"date": today_str, "present_players": present_players_str}]
+                errors = client.insert_rows_json(ATTENDANCE_TABLE_ID, new_record)
+                if errors:
+                    raise Exception(f"BigQuery Insert Errors: {errors}")
             flash('Attendance for today has been saved!', 'success')
         except Exception as e:
-            flash(f"An error occurred while saving attendance: {e}", "error")
+            if "streaming buffer" in str(e):
+                 flash('Attendance is processing. Please wait a moment before saving again.', 'error')
+            else:
+                flash(f"An error occurred: {e}", "error")
         return redirect(url_for('admin_dashboard'))
-        
     attendance_df = get_all_attendance()
     male_players, female_players = players_df[players_df['gender'] == 'Male'].to_dict('records'), players_df[players_df['gender'] == 'Female'].to_dict('records')
     today_record = attendance_df[attendance_df['date'] == today_str]
@@ -366,7 +372,7 @@ def finish_match():
         
         for player_list, result_col in [(winners, 'wins'), (losers, 'losses')]:
             for username in player_list:
-                if username: # Ensure username is not empty
+                if username:
                     update_player_query = f"""
                         UPDATE `{PLAYERS_TABLE_ID}`
                         SET {result_col} = {result_col} + 1

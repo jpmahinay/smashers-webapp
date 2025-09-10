@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="admin-page-container">
+    <div class="admin-header">
+        <h2>Manage Pending Registrations</h2>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="admin-matches-section">
+        {% if users %}
+        <div class="manage-matches-list">
+            {% for user in users %}
+            <div class="card match-card">
+                <div class="match-info">
+                    <h4><span class="player-highlight">{{ user.name }}</span> ({{ user.username }})</h4>
+                </div>
+                <div class="match-details-actions-wrapper">
+                     <div class="match-meta">
+                        <span><i class="fa-solid fa-cake-candles"></i> Age: {{ user.age }}</span>
+                        <span><i class="fa-solid fa-venus-mars"></i> Gender: {{ user.gender }}</span>
+                    </div>
+                    <div class="match-actions">
+                        <a href="{{ url_for('deny_registration', username=user.username) }}" class="btn btn-cancel btn-small">Deny</a>
+                        <a href="{{ url_for('approve_registration', username=user.username) }}" class="btn btn-start btn-small">Approve</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="card no-matches-info">There are no pending registrations.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

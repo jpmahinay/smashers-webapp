@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smashers - Badminton Ranking System</title>
-    <!-- Google Fonts -->
+    <title>Smashers - Badminton Ranking</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome for Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
-    <!-- Your Stylesheet -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -21,30 +18,45 @@
                     <img src="{{ url_for('static', filename='logo.png') }}" alt="Smashers Logo">
                 </a>
                 
-                <div class="nav-links" id="nav-links">
+                <div class="desktop-nav-links">
                     <a href="{{ url_for('rankings') }}">Rankings</a>
-                    <a href="{{ url_for('ongoing_matches') }}">Ongoing Matches</a>
-                    <a href="{{ url_for('history') }}">Match History</a>
+                    <a href="{{ url_for('ongoing_matches') }}">Ongoing</a>
+                    <a href="{{ url_for('history') }}">History</a>
                     {% if 'username' in session %}
                         {% if session.role == 'admin' %}
                             <a href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
                         {% else %}
                             <a href="{{ url_for('dashboard') }}">My Dashboard</a>
                         {% endif %}
-                        <a href="{{ url_for('logout') }}" class="nav-button">Logout</a>
+                        <a href="{{ url_for('logout') }}" class="nav-button-desktop">Logout</a>
                     {% else %}
                         <a href="{{ url_for('login') }}">Login</a>
-                        <a href="{{ url_for('register') }}" class="nav-button">Register</a>
+                        <a href="{{ url_for('register') }}" class="nav-button-desktop">Register</a>
                     {% endif %}
                 </div>
 
-               <!--<button class="nav-toggle hamburger" id="nav-toggle" type="button" aria-label="Menu"> -->
-                    <span class="hamburger-box">
-                        <span class="hamburger-inner"></span>
-                    </span>
+                <button class="hamburger nav-toggle" id="nav-toggle" type="button" aria-label="Menu">
+                    <span class="hamburger-box"><span class="hamburger-inner"></span></span>
                 </button>
             </div>
         </nav>
+        
+        <div class="mobile-nav-menu" id="mobile-nav-menu">
+             <a href="{{ url_for('rankings') }}">Rankings</a>
+            <a href="{{ url_for('ongoing_matches') }}">Ongoing Matches</a>
+            <a href="{{ url_for('history') }}">Match History</a>
+            {% if 'username' in session %}
+                {% if session.role == 'admin' %}
+                    <a href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
+                {% else %}
+                    <a href="{{ url_for('dashboard') }}">My Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="nav-button-mobile">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register') }}" class="nav-button-mobile">Register</a>
+            {% endif %}
+        </div>
 
         <main>
             <div class="container">

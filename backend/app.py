@@ -13,7 +13,7 @@ from google.api_core.exceptions import NotFound
 try:
     client = bigquery.Client()
     PROJECT_ID = client.project
-    DATASET_ID = "smashers_data" # Make sure this matches your dataset ID in BigQuery
+    DATASET_ID = "smashers_data"
 except Exception as e:
     print("ERROR: Could not initialize BigQuery client.")
     print("Please ensure GOOGLE_APPLICATION_CREDENTIALS environment variable is set correctly.")
@@ -25,9 +25,9 @@ MATCHES_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.matches"
 ATTENDANCE_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.attendance"
 
 app = Flask(__name__, template_folder='templates', static_folder='../static')
-app.secret_key = 'a_very_secret_and_secure_key_for_dev_v16_final'
+app.secret_key = 'a_very_secret_and_secure_key_for_dev_v17_final'
 
-# --- Helper Functions (CSV logic is kept for the simple users file) ---
+# --- Helper Functions ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 USERS_FILE = os.path.join(DATA_DIR, 'users.csv')
 
@@ -51,7 +51,6 @@ def generate_remark(score):
         else: return "Decisive Victory!"
     except (ValueError, TypeError): return ""
 
-# --- BigQuery Data Fetching Functions ---
 def get_all_players():
     try:
         query = f"SELECT * FROM `{PLAYERS_TABLE_ID}`"
@@ -74,30 +73,23 @@ def get_all_attendance():
         return pd.DataFrame(columns=['date', 'present_players'])
 
 
-# --- Main and Authentication Routes ---
 @app.route('/')
-def index():
-    return render_template('index.html')
+def index(): return render_template('index.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        users_df = read_csv(USERS_FILE)
-        players_df = get_all_players()
+        users_df, players_df = read_csv(USERS_FILE), get_all_players()
         username, password, name, age, gender = request.form['username'], request.form['password'], request.form['name'], request.form['age'], request.form['gender']
-        
         if username in users_df['username'].values or username in players_df['username'].values:
             flash('Username already exists!', 'error'); return redirect(url_for('register'))
-            
         hashed_password = generate_password_hash(password)
         new_user = pd.DataFrame([[username, hashed_password, 'player']], columns=['username', 'password', 'role'])
         write_csv(pd.concat([users_df, new_user], ignore_index=True), USERS_FILE)
-        
         new_player_row = [{"username": username, "name": name, "age": int(age), "gender": gender, "wins": 0, "losses": 0}]
         errors = client.insert_rows_json(PLAYERS_TABLE_ID, new_player_row)
         if errors:
             flash(f'Error saving player data: {errors}', 'error'); return redirect(url_for('register'))
-
         flash('Registration successful! Please log in.', 'success'); return redirect(url_for('login'))
     return render_template('register.html')
 
@@ -117,7 +109,6 @@ def login():
 def logout():
     session.clear(); flash('You have been logged out.', 'success'); return redirect(url_for('login'))
 
-# --- Player and Public Routes ---
 @app.route('/dashboard')
 def dashboard():
     if 'username' not in session or session.get('role') != 'player': return redirect(url_for('login'))
@@ -125,7 +116,6 @@ def dashboard():
     username = session['username']
     player_data = players_df[players_df['username'] == username].iloc[0]
     player_matches_df = matches_df[(matches_df['male_player1'] == username) | (matches_df['female_player1'] == username) | (matches_df['male_player2'] == username) | (matches_df['female_player2'] == username)]
-    
     player_first_names = {user: name.split()[0] for user, name in players_df.set_index('username')['name'].items()}
     processed_matches = []
     for _, match in player_matches_df.iterrows():
@@ -138,7 +128,6 @@ def dashboard():
             details['partner_name'] = player_first_names.get(p4 if username == p3 else p3, "")
             details['opponents_names'] = f"{player_first_names.get(p1, p1)} & {player_first_names.get(p2, p2)}"
         processed_matches.append(details)
-        
     return render_template('dashboard.html', player=player_data.to_dict(), matches=processed_matches)
 
 @app.route('/rankings')
@@ -216,7 +205,6 @@ def history():
         grouped_matches[formatted_date].append(match_details)
     return render_template('history.html', grouped_matches=grouped_matches, start_date=start_date, end_date=end_date)
 
-# --- Admin Routes ---
 @app.route('/admin')
 def admin_dashboard():
     if session.get('role') != 'admin': return redirect(url_for('login'))
@@ -238,17 +226,29 @@ def admin_dashboard():
 def attendance():
     if session.get('role') != 'admin': return redirect(url_for('login'))
     today_str = date.today().strftime('%Y-%m-%d')
-    players_df, attendance_df = get_all_players(), get_all_attendance()
+    players_df = get_all_players()
     if request.method == 'POST':
         present_players = request.form.getlist('present_players')
         present_players_str = ','.join(present_players)
-        delete_job = client.query(f"DELETE FROM `{ATTENDANCE_TABLE_ID}` WHERE date = '{today_str}'")
-        delete_job.result()
-        new_record = [{"date": today_str, "present_players": present_players_str}]
-        errors = client.insert_rows_json(ATTENDANCE_TABLE_ID, new_record)
-        if errors: flash(f"Error saving attendance: {errors}", "error")
-        else: flash('Attendance for today has been saved!', 'success')
+        
+        merge_query = f"""
+            MERGE `{ATTENDANCE_TABLE_ID}` T
+            USING (SELECT '{today_str}' AS date, '{present_players_str}' AS present_players) S
+            ON T.date = S.date
+            WHEN MATCHED THEN
+              UPDATE SET T.present_players = S.present_players
+            WHEN NOT MATCHED THEN
+              INSERT (date, present_players) VALUES (date, present_players)
+        """
+        try:
+            query_job = client.query(merge_query)
+            query_job.result()
+            flash('Attendance for today has been saved!', 'success')
+        except Exception as e:
+            flash(f"An error occurred while saving attendance: {e}", "error")
         return redirect(url_for('admin_dashboard'))
+        
+    attendance_df = get_all_attendance()
     male_players, female_players = players_df[players_df['gender'] == 'Male'].to_dict('records'), players_df[players_df['gender'] == 'Female'].to_dict('records')
     today_record = attendance_df[attendance_df['date'] == today_str]
     present_today = today_record.iloc[0]['present_players'].split(',') if not today_record.empty and pd.notna(today_record.iloc[0]['present_players']) else []
@@ -319,7 +319,8 @@ def start_match(match_index):
             UPDATE `{MATCHES_TABLE_ID}`
             SET status = 'ongoing'
             WHERE date = '{match_to_update['date']}' AND game_type = '{match_to_update['game_type']}'
-            AND male_player1 = '{match_to_update['male_player1']}' 
+            AND male_player1 = '{match_to_update['male_player1']}' AND female_player1 = '{match_to_update['female_player1']}'
+            AND male_player2 = '{match_to_update['male_player2']}' AND female_player2 = '{match_to_update['female_player2']}'
         """
         client.query(query).result()
         flash('Match started!', 'success')
@@ -335,7 +336,8 @@ def cancel_match(match_index):
         query = f"""
             DELETE FROM `{MATCHES_TABLE_ID}`
             WHERE date = '{match_to_delete['date']}' AND game_type = '{match_to_delete['game_type']}'
-            AND male_player1 = '{match_to_delete['male_player1']}'
+            AND male_player1 = '{match_to_delete['male_player1']}' AND female_player1 = '{match_to_delete['female_player1']}'
+            AND male_player2 = '{match_to_delete['male_player2']}' AND female_player2 = '{match_to_delete['female_player2']}'
         """
         client.query(query).result()
         flash('Scheduled match has been successfully canceled.', 'success')
@@ -346,7 +348,7 @@ def cancel_match(match_index):
 @app.route('/admin/finish_match', methods=['POST'])
 def finish_match():
     if session.get('role') != 'admin': return redirect(url_for('login'))
-    matches_df, players_df = get_all_matches(), get_all_players()
+    matches_df = get_all_matches()
     match_index, winner_team, score = int(request.form['match_index']), request.form['winner_team'], request.form['score']
     remark = generate_remark(score)
     if match_index < len(matches_df):
@@ -355,7 +357,8 @@ def finish_match():
             UPDATE `{MATCHES_TABLE_ID}`
             SET status = 'completed', winner_team = '{winner_team}', score = '{score}', remark = '{remark}'
             WHERE date = '{match_to_update['date']}' AND game_type = '{match_to_update['game_type']}'
-            AND male_player1 = '{match_to_update['male_player1']}'
+            AND male_player1 = '{match_to_update['male_player1']}' AND female_player1 = '{match_to_update['female_player1']}'
+            AND male_player2 = '{match_to_update['male_player2']}' AND female_player2 = '{match_to_update['female_player2']}'
         """
         client.query(update_query).result()
         
@@ -363,13 +366,13 @@ def finish_match():
         
         for player_list, result_col in [(winners, 'wins'), (losers, 'losses')]:
             for username in player_list:
-                update_player_query = f"""
-                    UPDATE `{PLAYERS_TABLE_ID}`
-                    SET {result_col} = {result_col} + 1
-                    WHERE username = '{username}'
-                """
-                client.query(update_player_query).result()
-
+                if username: # Ensure username is not empty
+                    update_player_query = f"""
+                        UPDATE `{PLAYERS_TABLE_ID}`
+                        SET {result_col} = {result_col} + 1
+                        WHERE username = '{username}'
+                    """
+                    client.query(update_player_query).result()
         flash('Match finished and results recorded.', 'success')
     else: flash('Failed to record results. Invalid match index.', 'error')
     return redirect(url_for('admin_dashboard'))

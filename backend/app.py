@@ -25,7 +25,7 @@ MATCHES_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.matches"
 ATTENDANCE_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.attendance"
 
 app = Flask(__name__, template_folder='templates', static_folder='../static')
-app.secret_key = 'a_very_secret_and_secure_key_for_dev_v19_final'
+app.secret_key = 'a_very_secret_and_secure_key_for_dev_v20_final'
 
 # --- Helper Functions ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -81,7 +81,7 @@ def register():
     if request.method == 'POST':
         users_df, players_df = read_csv(USERS_FILE), get_all_players()
         username, password, name, age, gender = request.form['username'], request.form['password'], request.form['name'], request.form['age'], request.form['gender']
-        if username in users_df['username'].values or username in players_df['username'].values:
+        if username in users_df['username'].values or (not players_df.empty and username in players_df['username'].values):
             flash('Username already exists!', 'error'); return redirect(url_for('register'))
         hashed_password = generate_password_hash(password)
         new_user = pd.DataFrame([[username, hashed_password, 'player']], columns=['username', 'password', 'role'])
@@ -284,10 +284,15 @@ def create_match():
         all_players = [male_player1, female_player1, male_player2, female_player2]
         if None in all_players or "" in all_players: flash('All four player slots must be filled.', 'error'); return redirect(url_for('create_match'))
         if len(set(all_players)) < 4: flash('All four players must be unique. A player may have been auto-selected.', 'error'); return redirect(url_for('create_match'))
-        new_match_row = [{"male_player1": male_player1, "female_player1": female_player1, "male_player2": male_player2, "female_player2": female_player2, "date": date_val, "game_type": game_type, "status": "scheduled", "winner_team": None, "score": None, "remark": None}]
-        errors = client.insert_rows_json(MATCHES_TABLE_ID, new_match_row)
-        if errors: flash(f'Error saving match: {errors}', 'error')
-        else: flash('Mixed Doubles Match created successfully!', 'success')
+        try:
+            insert_query = f"""
+                INSERT INTO `{MATCHES_TABLE_ID}` (male_player1, female_player1, male_player2, female_player2, date, game_type, status)
+                VALUES('{male_player1}', '{female_player1}', '{male_player2}', '{female_player2}', '{date_val}', '{game_type}', 'scheduled')
+            """
+            client.query(insert_query).result()
+            flash('Mixed Doubles Match created successfully!', 'success')
+        except Exception as e:
+            flash(f'Error saving match: {e}', 'error')
         return redirect(url_for('admin_dashboard'))
     return render_template('create_match.html', male_players=male_players, female_players=female_players, game_number=game_number, today_str=today_str)
 
@@ -307,10 +312,15 @@ def create_custom_match():
         all_players = [t1_p1, t1_p2, t2_p1, t2_p2]
         if None in all_players or "" in all_players: flash('All four player slots must be filled.', 'error'); return redirect(url_for('create_custom_match'))
         if len(set(all_players)) < 4: flash('All four players in a match must be unique.', 'error'); return redirect(url_for('create_custom_match'))
-        new_match_row = [{"male_player1": t1_p1, "female_player1": t1_p2, "male_player2": t2_p1, "female_player2": t2_p2, "date": date_val, "game_type": game_type, "status": "scheduled", "winner_team": None, "score": None, "remark": None}]
-        errors = client.insert_rows_json(MATCHES_TABLE_ID, new_match_row)
-        if errors: flash(f'Error saving match: {errors}', 'error')
-        else: flash('Custom Match created successfully!', 'success')
+        try:
+            insert_query = f"""
+                INSERT INTO `{MATCHES_TABLE_ID}` (male_player1, female_player1, male_player2, female_player2, date, game_type, status)
+                VALUES('{t1_p1}', '{t1_p2}', '{t2_p1}', '{t2_p2}', '{date_val}', '{game_type}', 'scheduled')
+            """
+            client.query(insert_query).result()
+            flash('Custom Match created successfully!', 'success')
+        except Exception as e:
+            flash(f'Error saving match: {e}', 'error')
         return redirect(url_for('admin_dashboard'))
     return render_template('create_custom_match.html', available_players=available_players, today_str=today_str)
 

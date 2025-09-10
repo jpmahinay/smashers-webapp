@@ -4,8 +4,6 @@
     <div class="admin-header">
         <h2>Admin Control Panel</h2>
         <div class="admin-actions">
-            <a href="{{ url_for('manage_registrations') }}" class="btn btn-warning">Manage Registrations</a>
-            <a href="{{ url_for('manage_players') }}" class="btn btn-danger">Manage Players</a>
             <a href="{{ url_for('attendance') }}" class="btn btn-secondary">Set Attendance</a>
             <a href="{{ url_for('create_match') }}" class="btn btn-primary">New Mixed Match</a>
             <a href="{{ url_for('create_custom_match') }}" class="btn btn-tertiary">New Custom Match</a>
@@ -20,16 +18,16 @@
             <div class="card match-card {% if match.status == 'ongoing' %}ongoing-match{% endif %}">
                 <div class="match-info">
                      <h4>
-                      <span class="team-label">Team 1</span> 
-                      <span class="player-highlight">{{ match.t1_p1_name }}</span> 
-                      <span class="ampersand-highlight">|</span>
-                      <span class="player-highlight">{{ match.t1_p2_name }}</span>
-                      <small class="vs-text-card">vs</small>
-                      <span class="team-label">Team 2</span> 
-                      <span class="player-highlight">{{ match.t2_p1_name }}</span> 
-                      <span class="ampersand-highlight">|</span>
-                      <span class="player-highlight">{{ match.t2_p2_name }}</span>
-                    </h4>
+  <span class="team-label">Team 1</span> 
+  <span class="player-highlight">{{ match.t1_p1_name }}</span> 
+  <span class="ampersand-highlight">|</span>
+  <span class="player-highlight">{{ match.t1_p2_name }}</span>
+  <small class="vs-text-card">vs</small>
+  <span class="team-label">Team 2</span> 
+  <span class="player-highlight">{{ match.t2_p1_name }}</span> 
+  <span class="ampersand-highlight">|</span>
+  <span class="player-highlight">{{ match.t2_p2_name }}</span>
+</h4>
                 </div>
 
                 <div class="match-details-actions-wrapper">

@@ -16,11 +16,11 @@
             <tbody>
                 {% for player in players %}
                 <tr>
-                    <td>{{ loop.index }}</td>
-                    <td><a href="{{ url_for('player_profile', username=player.username) }}">{{ player.name }}</a></td>
-                    <td>{{ player.wins }}</td>
-                    <td>{{ player.losses }}</td>
-                    <td>{{ "%.2f"|format(player.win_loss_ratio) }}</td>
+                    <td data-label="Rank">{{ loop.index }}</td>
+                    <td data-label="Player Name"><a href="{{ url_for('player_profile', username=player.username) }}">{{ player.name }}</a></td>
+                    <td data-label="Wins">{{ player.wins }}</td>
+                    <td data-label="Losses">{{ player.losses }}</td>
+                    <td data-label="Win/Loss Ratio">{{ "%.2f"|format(player.win_loss_ratio) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="admin-page-container">
+    <div class="admin-header">
+        <h2>Manage Players</h2>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">&larr; Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="admin-matches-section">
+        {% if players %}
+        <div class="manage-matches-list">
+            {% for player in players %}
+            <div class="card match-card">
+                <div class="match-info">
+                    <h4><span class="player-highlight">{{ player.name }}</span> ({{ player.username }})</h4>
+                </div>
+                <div class="match-details-actions-wrapper">
+                    <div class="match-meta">
+                        <span><i class="fa-solid fa-trophy"></i> Wins: {{ player.wins }}</span>
+                        <span><i class="fa-solid fa-heart-crack"></i> Losses: {{ player.losses }}</span>
+                    </div>
+                    <div class="match-actions">
+                        <a href="{{ url_for('delete_player', username=player.username) }}" class="btn btn-cancel btn-small" onclick="return confirm('Are you sure you want to permanently delete this player?');">Delete Player</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="card no-matches-info">There are no players to manage.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

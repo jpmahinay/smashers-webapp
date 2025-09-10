@@ -17,14 +17,14 @@
                 <div class="match-meta">
                     <span><i class="fa-solid fa-calendar-days"></i> {{ match.date }}</span>
                     <span><i class="fa-solid fa-trophy"></i> {{ match.game_type }}</span>
-                    <span><i class="fa-solid fa-circle-info"></i> <span class="status-{{ match.status }}">{{ match.status }}</span></span>
+                    <span><i class="fa-solid fa-circle-info"></i> <span class="status-ongoing">{{ match.status }}</span></span>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <p class="card">There are no matches currently in progress.</p>
+    <p class="card" style="text-align: center;">There are no matches currently in progress.</p>
     {% endif %}
 </div>
 {% endblock %}

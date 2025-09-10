@@ -25,7 +25,7 @@ MATCHES_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.matches"
 ATTENDANCE_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.attendance"
 
 app = Flask(__name__, template_folder='templates', static_folder='../static')
-app.secret_key = 'a_very_secret_and_secure_key_for_dev_v18_final'
+app.secret_key = 'a_very_secret_and_secure_key_for_dev_v19_final'
 
 # --- Helper Functions ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -245,8 +245,7 @@ def attendance():
             else:
                 new_record = [{"date": today_str, "present_players": present_players_str}]
                 errors = client.insert_rows_json(ATTENDANCE_TABLE_ID, new_record)
-                if errors:
-                    raise Exception(f"BigQuery Insert Errors: {errors}")
+                if errors: raise Exception(f"BigQuery Insert Errors: {errors}")
             flash('Attendance for today has been saved!', 'success')
         except Exception as e:
             if "streaming buffer" in str(e):
@@ -319,17 +318,21 @@ def create_custom_match():
 def start_match(match_index):
     if session.get('role') != 'admin': return redirect(url_for('login'))
     matches_df = get_all_matches()
-    if match_index < len(matches_df):
-        match_to_update = matches_df.iloc[match_index]
+    manageable_matches = matches_df[matches_df['status'] != 'completed'].reset_index(drop=True)
+    if match_index < len(manageable_matches):
+        match_to_update = manageable_matches.iloc[match_index]
         query = f"""
             UPDATE `{MATCHES_TABLE_ID}`
             SET status = 'ongoing'
             WHERE date = '{match_to_update['date']}' AND game_type = '{match_to_update['game_type']}'
             AND male_player1 = '{match_to_update['male_player1']}' AND female_player1 = '{match_to_update['female_player1']}'
             AND male_player2 = '{match_to_update['male_player2']}' AND female_player2 = '{match_to_update['female_player2']}'
+            AND status = 'scheduled'
         """
-        client.query(query).result()
-        flash('Match started!', 'success')
+        try:
+            client.query(query).result(); flash('Match started!', 'success')
+        except Exception as e:
+            flash(f"Could not start match. BigQuery error: {e}", 'error')
     else: flash('Invalid match index.', 'error')
     return redirect(url_for('admin_dashboard'))
 
@@ -337,16 +340,20 @@ def start_match(match_index):
 def cancel_match(match_index):
     if session.get('role') != 'admin': return redirect(url_for('login'))
     matches_df = get_all_matches()
-    if match_index < len(matches_df) and matches_df.iloc[match_index]['status'] == 'scheduled':
-        match_to_delete = matches_df.iloc[match_index]
+    manageable_matches = matches_df[matches_df['status'] != 'completed'].reset_index(drop=True)
+    if match_index < len(manageable_matches) and manageable_matches.iloc[match_index]['status'] == 'scheduled':
+        match_to_delete = manageable_matches.iloc[match_index]
         query = f"""
             DELETE FROM `{MATCHES_TABLE_ID}`
             WHERE date = '{match_to_delete['date']}' AND game_type = '{match_to_delete['game_type']}'
             AND male_player1 = '{match_to_delete['male_player1']}' AND female_player1 = '{match_to_delete['female_player1']}'
             AND male_player2 = '{match_to_delete['male_player2']}' AND female_player2 = '{match_to_delete['female_player2']}'
+            AND status = 'scheduled'
         """
-        client.query(query).result()
-        flash('Scheduled match has been successfully canceled.', 'success')
+        try:
+            client.query(query).result(); flash('Scheduled match has been successfully canceled.', 'success')
+        except Exception as e:
+            flash(f"Could not cancel match. BigQuery error: {e}", 'error')
     else:
         flash('Could not cancel match. It might already be ongoing or completed.', 'error')
     return redirect(url_for('admin_dashboard'))
@@ -355,21 +362,21 @@ def cancel_match(match_index):
 def finish_match():
     if session.get('role') != 'admin': return redirect(url_for('login'))
     matches_df = get_all_matches()
+    manageable_matches = matches_df[matches_df['status'] != 'completed'].reset_index(drop=True)
     match_index, winner_team, score = int(request.form['match_index']), request.form['winner_team'], request.form['score']
     remark = generate_remark(score)
-    if match_index < len(matches_df):
-        match_to_update = matches_df.iloc[match_index]
+    if match_index < len(manageable_matches):
+        match_to_update = manageable_matches.iloc[match_index]
         update_query = f"""
             UPDATE `{MATCHES_TABLE_ID}`
             SET status = 'completed', winner_team = '{winner_team}', score = '{score}', remark = '{remark}'
             WHERE date = '{match_to_update['date']}' AND game_type = '{match_to_update['game_type']}'
             AND male_player1 = '{match_to_update['male_player1']}' AND female_player1 = '{match_to_update['female_player1']}'
             AND male_player2 = '{match_to_update['male_player2']}' AND female_player2 = '{match_to_update['female_player2']}'
+            AND status = 'ongoing'
         """
         client.query(update_query).result()
-        
         winners, losers = ([match_to_update['male_player1'], match_to_update['female_player1']], [match_to_update['male_player2'], match_to_update['female_player2']]) if winner_team == 'Team 1' else ([match_to_update['male_player2'], match_to_update['female_player2']], [match_to_update['male_player1'], match_to_update['female_player1']])
-        
         for player_list, result_col in [(winners, 'wins'), (losers, 'losses')]:
             for username in player_list:
                 if username:
